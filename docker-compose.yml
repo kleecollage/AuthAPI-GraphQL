@@ -1,4 +1,12 @@
 services:
+  authapi:
+    container_name: authapi
+    build: .
+    ports:
+      - "3000:3000"
+    links:
+      - authdb
+    restart: always
   authdb:
     container_name: mongodb
     image: mongo:latest

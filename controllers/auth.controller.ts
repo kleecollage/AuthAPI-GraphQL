@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/users.model';
 //** ------------------------------ REGISTER ------------------------------ **//
@@ -8,7 +8,7 @@ export const register = async (req: Request, res: Response) => {
   try {
     let user = await User.findOne({ email })
     if (user) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         errors: {
           messages: ['User already exists']
@@ -36,7 +36,7 @@ export const register = async (req: Request, res: Response) => {
       },
       (error, token) => {
         if (error) {
-          return res.status(500).json({
+         res.status(500).json({
             success: false,
             errors: {
               messages: ["Server error", error]
@@ -44,15 +44,18 @@ export const register = async (req: Request, res: Response) => {
             token: null,
           });
         }
-        return res.status(200).json({
+       res.status(200).json({
           success: true,
           errors: null,
           token,
+          username: newUser.username,
+          email: newUser.email,
+          id: newUser.id,
         });
       }
     )
   } catch (error) {
-    return res.status(500).json({
+   res.status(500).json({
       success: false,
       errors: {
         messages: ["Server error", error]
@@ -66,9 +69,8 @@ export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body
   try {
     let user = await User.findOne({ email });
-
     if (!user) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         errors: {
           messages: ['Invalid credentials']
@@ -79,7 +81,7 @@ export const login = async (req: Request, res: Response) => {
 
     const validatePassword = bcrypt.compareSync(password, user.password)
     if (!validatePassword) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         errors: {
           messages: ['Invalid credentials']
@@ -108,20 +110,79 @@ export const login = async (req: Request, res: Response) => {
             token: null,
           });
         }
-        return res.status(200).json({
+        res.status(200).json({
           success: true,
           errors: null,
           token,
+          username: user.username,
+          email: user.email,
+          id: user.id,
         });
       }
     )
   } catch (error) {
-    return res.status(500).json({
+    res.status(500).json({
         success: false,
         errors: {
           messages: ['Something went wrong', error]
         },
         token: null,
       });
+  }
+}
+//** ------------------------------ UPDATE PASSWORD ------------------------------ **//
+export const changePassword = async (req: Request | any, res: Response, next: NextFunction) => {
+  const uid = req.uid;
+  const { oldPassword, newPassword } = req.body;
+
+  try {
+    const user = await User.findById(uid);
+    const validPassword = bcrypt.compareSync(oldPassword, user.password)
+
+    if (!validPassword) {
+      res.status(400).json({
+        success: false,
+        errors: {
+          messages: ['Old password is incorrect'],
+        },
+        token: null,
+      });
+    };
+
+    const salt = bcrypt.genSaltSync(12);
+    const newPasswordHash = bcrypt.hashSync(newPassword, salt);
+
+    await User.findByIdAndUpdate(uid, {password: newPasswordHash})
+
+    res.status(201).json({
+      success: true,
+      errors: null,
+      token: null
+    })
+  } catch (error) {
+    next(error);
+  }
+}
+//** ------------------------------ UPDATE USERNAME ------------------------------ **//
+export const changeUsername = async (req: Request | any, res: Response) => {
+  const uid = req.uid;
+  const { newUsername: username } = req.body;
+
+  try {
+    await User.findByIdAndUpdate(uid, { username })
+
+    res.status(201).json({
+      success: true,
+      errors: null,
+      token: null
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      errors: {
+        messages: ['Something went wrong', error]
+      },
+      token: null,
+    });
   }
 }
