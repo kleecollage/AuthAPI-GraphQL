@@ -1,0 +1,13 @@
+services:
+  authdb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=kleec
+      - MONGO_INITDB_ROOT_PASSWORD=root
+    volumes:
+      - mongo-auth-api:/data/db
+
+volumes:
+  mongo-auth-api:
